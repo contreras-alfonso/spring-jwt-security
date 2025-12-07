@@ -1,5 +1,6 @@
 package com.alfonso.jwtsecurity.service;
 
+import com.alfonso.jwtsecurity.details.CustomUserDetails;
 import com.alfonso.jwtsecurity.dto.TokenPair;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.io.Decoders;
@@ -39,7 +40,6 @@ public class JwtService {
 
     //Generar access token
     public String generateAccessToken(Authentication authentication) {
-        System.out.println("=========== NADA ========");
         return generateToken(authentication, jwtExpirationMs, new HashMap<>());
     }
 
@@ -54,16 +54,6 @@ public class JwtService {
 
     private String generateToken(Authentication authentication, long expirationMs, Map<String, String> claims) {
         UserDetails userPrincipal = (UserDetails) authentication.getPrincipal();
-        /*Collection<? extends GrantedAuthority> roles = authentication.getAuthorities();
-        System.out.println("======== userPrincipal ==========" + userPrincipal);
-        System.out.println("======== roles ========" + roles);
-
-        System.out.println("======== userPrincipal ======== " + userPrincipal.getUsername());
-        Claims claims2 = Jwts.claims()
-                .add("authorities", new ObjectMapper().writeValueAsString(roles))
-                // .add("authorities", roles)
-                .add("username", userPrincipal.getUsername()).build();*/
-
 
         Date now = new Date();
         Date expirationDate = new Date(now.getTime() + expirationMs);
@@ -142,5 +132,9 @@ public class JwtService {
         return userPrincipal != null ? userPrincipal.getUsername() : "";
     }
 
+    public String extractFullName(Authentication authentication) {
+        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+        return userDetails != null ? userDetails.getFullname() : "";
+    }
 
 }

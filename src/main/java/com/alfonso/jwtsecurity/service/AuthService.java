@@ -6,6 +6,7 @@ import com.alfonso.jwtsecurity.repository.UserRepository;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -41,18 +42,29 @@ public class AuthService {
 
     @Transactional(readOnly = true)
     public LoginResponse login(LoginRequest loginRequest) {
-        Authentication authentication = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(loginRequest.getUsername(), loginRequest.getPassword()));
 
-        // Set authentication in security context
-        SecurityContextHolder.getContext().setAuthentication(authentication);
+        try {
+            Authentication authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(
+                            loginRequest.getUsername(),
+                            loginRequest.getPassword()
+                    )
+            );
 
-        //Generate Token Pair
+            SecurityContextHolder.getContext().setAuthentication(authentication);
 
-        String username = jwtService.extractUsername(authentication);
-        List<String> roles = jwtService.extractRoles(authentication);
-        TokenPair tokenPair = jwtService.generateTokenPair(authentication);
+            String username = jwtService.extractUsername(authentication);
+            String fullname = jwtService.extractFullName(authentication);
+            List<String> roles = jwtService.extractRoles(authentication);
+            TokenPair tokenPair = jwtService.generateTokenPair(authentication);
 
-        return new LoginResponse(username, roles, tokenPair);
+            return new LoginResponse(username, fullname, roles, tokenPair);
+
+        } catch (BadCredentialsException e) {
+            System.out.println("==== INVALID CREDENTIALS ====");
+            throw new BadCredentialsException("Credenciales inválidas");
+        }
+
     }
 
     public TokenPair refreshToken(@Valid RefreshTokenRequest request) {

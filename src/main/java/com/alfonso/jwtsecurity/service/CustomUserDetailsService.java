@@ -1,5 +1,6 @@
 package com.alfonso.jwtsecurity.service;
 
+import com.alfonso.jwtsecurity.details.CustomUserDetails;
 import com.alfonso.jwtsecurity.entity.User;
 import com.alfonso.jwtsecurity.repository.UserRepository;
 import lombok.AllArgsConstructor;
@@ -16,18 +17,15 @@ import java.util.List;
 @Service
 @AllArgsConstructor
 //@RequiredArgsConstructor -> solo invoca a los atributos final y @NonNull
-public class CustomUserDetailsService implements UserDetailsService {
+class CustomUserDetailsService implements UserDetailsService {
 
     private final UserRepository userRepository;
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         User user = this.userRepository.findByUsername(username).orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado"));
-        return new org.springframework.security.core.userdetails.User(
-                user.getUsername(),
-                user.getPassword(),
-                getAuthority(user)
-        );
+        System.out.println("==== loadUserByUsername ==== ");
+        return new CustomUserDetails(user);
     }
 
     // Devuelve algo como: [ { authority: "ADMIN" } ]
