@@ -4,17 +4,20 @@ import com.alfonso.jwtsecurity.dto.TokenPair;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
-import io.jsonwebtoken.security.SignatureException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ArrayNode;
 
 import javax.crypto.SecretKey;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -36,6 +39,7 @@ public class JwtService {
 
     //Generar access token
     public String generateAccessToken(Authentication authentication) {
+        System.out.println("=========== NADA ========");
         return generateToken(authentication, jwtExpirationMs, new HashMap<>());
     }
 
@@ -50,6 +54,16 @@ public class JwtService {
 
     private String generateToken(Authentication authentication, long expirationMs, Map<String, String> claims) {
         UserDetails userPrincipal = (UserDetails) authentication.getPrincipal();
+        /*Collection<? extends GrantedAuthority> roles = authentication.getAuthorities();
+        System.out.println("======== userPrincipal ==========" + userPrincipal);
+        System.out.println("======== roles ========" + roles);
+
+        System.out.println("======== userPrincipal ======== " + userPrincipal.getUsername());
+        Claims claims2 = Jwts.claims()
+                .add("authorities", new ObjectMapper().writeValueAsString(roles))
+                // .add("authorities", roles)
+                .add("username", userPrincipal.getUsername()).build();*/
+
 
         Date now = new Date();
         Date expirationDate = new Date(now.getTime() + expirationMs);
@@ -74,7 +88,7 @@ public class JwtService {
     }
 
     public boolean isValidToken(String token) {
-        return extractAllClaims(token) != null;
+        return extractAllClaims(token) != null && !this.isRefreshToken(token);
     }
 
     public String extractUsernameFromToken(String token) {
@@ -88,11 +102,9 @@ public class JwtService {
     //Validar si el token es refresh token
     public boolean isRefreshToken(String token) {
         Claims claims = extractAllClaims(token);
-
         if (claims == null) {
             return false;
         }
-
         return "refresh".equals(claims.get("tokenType"));
     }
 
@@ -105,6 +117,7 @@ public class JwtService {
                     .parseSignedClaims(token)
                     .getPayload();
         } catch (JwtException | IllegalArgumentException e) {
+            // TODO: aquí nunca devolverá un null
             throw new RuntimeException(e);
         }
         return claims;
@@ -113,6 +126,20 @@ public class JwtService {
     private SecretKey getSignInKey() {
         byte[] keyBytes = Decoders.BASE64.decode(jwtSecret);
         return Keys.hmacShaKeyFor(keyBytes);
+    }
+
+
+    public List<String> extractRoles(Authentication authentication) {
+        return authentication.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .filter(authority -> authority.startsWith("ROLE_"))
+                .map(authority -> authority.replace("ROLE_", ""))
+                .toList();
+    }
+
+    public String extractUsername(Authentication authentication) {
+        UserDetails userPrincipal = (UserDetails) authentication.getPrincipal();
+        return userPrincipal != null ? userPrincipal.getUsername() : "";
     }
 
 

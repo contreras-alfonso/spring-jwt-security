@@ -1,9 +1,6 @@
 package com.alfonso.jwtsecurity.controller;
 
-import com.alfonso.jwtsecurity.dto.LoginRequest;
-import com.alfonso.jwtsecurity.dto.RefreshTokenRequest;
-import com.alfonso.jwtsecurity.dto.RegisterRequest;
-import com.alfonso.jwtsecurity.dto.TokenPair;
+import com.alfonso.jwtsecurity.dto.*;
 import com.alfonso.jwtsecurity.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -28,8 +25,8 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest loginRequest) {
-        TokenPair tokenPair = authService.login(loginRequest);
-        return ResponseEntity.ok(tokenPair);
+        LoginResponse loginResponse = authService.login(loginRequest);
+        return ResponseEntity.ok(loginResponse);
     }
 
     @PostMapping("/refresh-token")
