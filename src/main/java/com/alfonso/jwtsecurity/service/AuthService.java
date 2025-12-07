@@ -2,6 +2,9 @@ package com.alfonso.jwtsecurity.service;
 
 import com.alfonso.jwtsecurity.dto.*;
 import com.alfonso.jwtsecurity.entity.User;
+import com.alfonso.jwtsecurity.exception.InvalidRefreshToken;
+import com.alfonso.jwtsecurity.exception.UserAlreadyExists;
+import com.alfonso.jwtsecurity.exception.UserNotFoundException;
 import com.alfonso.jwtsecurity.repository.UserRepository;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
@@ -31,8 +34,7 @@ public class AuthService {
     @Transactional
     public void register(RegisterRequest registerRequest) {
         if (this.userRepository.existsByUsername(registerRequest.getUsername())) {
-            //TODO: Crear exepción personalizada
-            throw new IllegalArgumentException("El usuario ya existe");
+            throw new UserAlreadyExists("User already exists");
         }
 
         User user = User.builder().username(registerRequest.getUsername()).password(passwordEncoder.encode(registerRequest.getPassword())).fullname(registerRequest.getFullname()).role(registerRequest.getRole()).build();
@@ -41,7 +43,7 @@ public class AuthService {
     }
 
     @Transactional(readOnly = true)
-    public LoginResponse login(LoginRequest loginRequest) {
+    public AuthResponse login(LoginRequest loginRequest) {
 
         try {
             Authentication authentication = authenticationManager.authenticate(
@@ -58,33 +60,34 @@ public class AuthService {
             List<String> roles = jwtService.extractRoles(authentication);
             TokenPair tokenPair = jwtService.generateTokenPair(authentication);
 
-            return new LoginResponse(username, fullname, roles, tokenPair);
+            return new AuthResponse(username, fullname, roles, tokenPair);
 
         } catch (BadCredentialsException e) {
-            System.out.println("==== INVALID CREDENTIALS ====");
             throw new BadCredentialsException("Credenciales inválidas");
         }
-
     }
 
-    public TokenPair refreshToken(@Valid RefreshTokenRequest request) {
+    public AuthResponse refreshToken(@Valid RefreshTokenRequest request) {
         String refreshToken = request.getRefreshToken();
         //check if it is valid refresh token
         if (!jwtService.isRefreshToken(refreshToken)) {
-            // TODO: Agregar validación personalizada
-            throw new IllegalArgumentException("Invalid refresh token");
+            throw new InvalidRefreshToken("Invalid refresh token");
         }
 
         String user = jwtService.extractUsernameFromToken(refreshToken);
         UserDetails userDetails = userDetailsService.loadUserByUsername(user);
 
         if (userDetails == null) {
-            throw new IllegalArgumentException("Usuario no encontrado");
+            throw new UserNotFoundException("User not found");
         }
 
         UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
 
-        String accessToken = jwtService.generateAccessToken(authentication);
-        return new TokenPair(accessToken, refreshToken);
+        String username = jwtService.extractUsername(authentication);
+        String fullname = jwtService.extractFullName(authentication);
+        List<String> roles = jwtService.extractRoles(authentication);
+        TokenPair tokenPair = jwtService.generateTokenPair(authentication);
+
+        return new AuthResponse(username, fullname, roles, tokenPair);
     }
 }

@@ -1,6 +1,9 @@
 package com.alfonso.jwtsecurity.filter;
 
+import com.alfonso.jwtsecurity.exception.InvalidJwtTokenException;
+import com.alfonso.jwtsecurity.exception.MissingAuthorizationHeaderException;
 import com.alfonso.jwtsecurity.service.JwtService;
+import com.alfonso.jwtsecurity.util.JwtErrorResponseWriter;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -16,6 +19,7 @@ import org.springframework.security.web.authentication.WebAuthenticationDetailsS
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import tools.jackson.databind.ObjectMapper;
+import com.alfonso.jwtsecurity.entity.Error;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -32,52 +36,52 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                     HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
 
-        // Interceptar la request
-        final String authHeader = request.getHeader("Authorization");
-        final String jwt;
-        final String username;
+        try {
 
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            filterChain.doFilter(request, response);
-            return;
-        }
+            String path = request.getServletPath();
 
-        jwt = getJwtFormRequest(request);
-
-        // checar si el token es válido
-        if (!jwtService.isValidToken(jwt)) {
-            filterChain.doFilter(request, response);
-            return;
-        }
-
-        username = jwtService.extractUsernameFromToken(jwt);
-
-        if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            UserDetails userDetails = userDetailsService.loadUserByUsername(username);
-
-            if (jwtService.validateTokenForUser(jwt, userDetails)) {
-
-
-                UsernamePasswordAuthenticationToken authToken
-                        = new UsernamePasswordAuthenticationToken(
-                        userDetails,
-                        null,
-                        userDetails.getAuthorities()
-                );
-                authToken.setDetails(
-                        new WebAuthenticationDetailsSource().buildDetails(request)
-                );
-
-                SecurityContextHolder.getContext().setAuthentication(authToken);
+            if (path.startsWith("/api/auth/")) {
+                filterChain.doFilter(request, response);
+                return;
             }
+
+            final String authHeader = request.getHeader("Authorization");
+            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+                throw new MissingAuthorizationHeaderException("Authorization header missing or malformed");
+            }
+
+            String jwt = getJwtFormRequest(request);
+
+            if (!jwtService.isValidToken(jwt)) {
+                throw new InvalidJwtTokenException("Invalid token");
+            }
+
+            String username = jwtService.extractUsernameFromToken(jwt);
+
+            if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+
+                if (jwtService.validateTokenForUser(jwt, userDetails)) {
+                    UsernamePasswordAuthenticationToken authToken =
+                            new UsernamePasswordAuthenticationToken(
+                                    userDetails,
+                                    null,
+                                    userDetails.getAuthorities()
+                            );
+                    authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                    SecurityContextHolder.getContext().setAuthentication(authToken);
+                }
+            }
+
             filterChain.doFilter(request, response);
+
+        } catch (MissingAuthorizationHeaderException ex) {
+            JwtErrorResponseWriter.sendUnauthorized(response, "Token no proveído", ex.getMessage());
+        } catch (InvalidJwtTokenException ex) {
+            JwtErrorResponseWriter.sendUnauthorized(response, "Token inválido", ex.getMessage());
         }
-
-        // Hacer la validación
-
-        // Autenticar al usuario
-
     }
+
 
     private String getJwtFormRequest(HttpServletRequest request) {
         final String authHeader = request.getHeader("Authorization");

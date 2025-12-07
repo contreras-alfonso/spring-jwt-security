@@ -2,6 +2,8 @@ package com.alfonso.jwtsecurity.service;
 
 import com.alfonso.jwtsecurity.details.CustomUserDetails;
 import com.alfonso.jwtsecurity.dto.TokenPair;
+import com.alfonso.jwtsecurity.exception.InvalidJwtTokenException;
+import com.alfonso.jwtsecurity.exception.InvalidRefreshToken;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
@@ -106,9 +108,9 @@ public class JwtService {
                     .build()
                     .parseSignedClaims(token)
                     .getPayload();
-        } catch (JwtException | IllegalArgumentException e) {
+        } catch (JwtException e) {
             // TODO: aquí nunca devolverá un null
-            throw new RuntimeException(e);
+            throw new InvalidJwtTokenException("Invalid token");
         }
         return claims;
     }

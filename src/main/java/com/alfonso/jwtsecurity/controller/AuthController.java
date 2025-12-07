@@ -25,13 +25,13 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest loginRequest) {
-        LoginResponse loginResponse = authService.login(loginRequest);
-        return ResponseEntity.ok(loginResponse);
+        AuthResponse authResponse = authService.login(loginRequest);
+        return ResponseEntity.ok(authResponse);
     }
 
     @PostMapping("/refresh-token")
     public ResponseEntity<?> refreshToken(@Valid @RequestBody RefreshTokenRequest request) {
-        TokenPair tokenPair = authService.refreshToken(request);
-        return ResponseEntity.ok(tokenPair);
+        AuthResponse authResponse = authService.refreshToken(request);
+        return ResponseEntity.ok(authResponse);
     }
 }
